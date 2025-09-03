@@ -1,0 +1,82 @@
+[
+  {
+    "sender": "john.customer@email.com",
+    "sender_name": "John Customer",
+    "subject": "URGENT: Order #12345 not delivered - need immediate help",
+    "body": "Hi, I placed order #12345 three weeks ago and still haven't received it. This is extremely urgent as it was a gift for my daughter's birthday which is tomorrow. I've tried calling but can't get through. My alternate email is john.backup@gmail.com and phone is +1-555-0123. Please help immediately!",
+    "date_received": "2024-01-15T10:30:00Z",
+    "raw_html": "<html><body>Hi, I placed order #12345 three weeks ago...</body></html>"
+  },
+  {
+    "sender": "sarah.jones@company.com",
+    "sender_name": "Sarah Jones",
+    "subject": "Billing question about recent charge",
+    "body": "Hello, I noticed a charge of $29.99 on my credit card from your company but I don't remember making this purchase. Could you please help me understand what this charge is for? My order reference might be ORD-7891. Thanks!",
+    "date_received": "2024-01-15T14:20:00Z",
+    "raw_html": "<html><body>Hello, I noticed a charge of $29.99...</body></html>"
+  },
+  {
+    "sender": "mike.developer@tech.com",
+    "sender_name": "Mike Developer",
+    "subject": "Feature request: API rate limiting",
+    "body": "Hi team, I'm a developer using your API and would love to see better rate limiting controls. Currently, I hit limits unexpectedly which breaks my application. Could you add configurable rate limits per API key? This would help many developers like me. Contact me at mike.dev@tech.com for more details.",
+    "date_received": "2024-01-15T09:15:00Z",
+    "raw_html": "<html><body>Hi team, I'm a developer using your API...</body></html>"
+  },
+  {
+    "sender": "angry.customer@email.com",
+    "sender_name": "Frustrated Customer",
+    "subject": "Terrible service - demanding refund NOW",
+    "body": "I am absolutely furious with your service. Nothing works as advertised and your support is useless. I want a full refund immediately or I'm reporting to BBB. This is the worst experience I've ever had. Call me at 555-9876 to resolve this NOW!",
+    "date_received": "2024-01-15T16:45:00Z",
+    "raw_html": "<html><body>I am absolutely furious with your service...</body></html>"
+  },
+  {
+    "sender": "happy.user@domain.com",
+    "sender_name": "Happy User",
+    "subject": "Love the new features!",
+    "body": "Just wanted to say thank you for the recent updates. The new dashboard is amazing and has made my workflow so much better. Keep up the excellent work! You guys are the best.",
+    "date_received": "2024-01-15T11:00:00Z",
+    "raw_html": "<html><body>Just wanted to say thank you for the recent updates...</body></html>"
+  },
+  {
+    "sender": "tech.support@client.com",
+    "sender_name": "Tech Support",
+    "subject": "Cannot login to account - CRITICAL",
+    "body": "Our team cannot access our account since yesterday. This is blocking our entire operation. We have order #98765 pending and cannot track it. This is a critical business issue. Please resolve immediately. Contact us at support@client.com or call 1-800-555-HELP.",
+    "date_received": "2024-01-15T08:30:00Z",
+    "raw_html": "<html><body>Our team cannot access our account since yesterday...</body></html>"
+  },
+  {
+    "sender": "feedback@startup.io",
+    "sender_name": "Startup Feedback",
+    "subject": "Integration request for our platform",
+    "body": "Hello, we're a growing startup and love your service. We'd like to integrate your API with our platform to provide better service to our customers. Could we schedule a call to discuss partnership opportunities? We're particularly interested in bulk pricing for our 1000+ users.",
+    "date_received": "2024-01-15T13:10:00Z",
+    "raw_html": "<html><body>Hello, we're a growing startup and love your service...</body></html>"
+  },
+  {
+    "sender": "newsletter@company.com",
+    "sender_name": "Company Newsletter",
+    "subject": "Weekly updates and new features",
+    "body": "This week we launched several new features including enhanced security, better performance, and improved user interface. Check out our blog for detailed information about these updates.",
+    "date_received": "2024-01-15T12:00:00Z",
+    "raw_html": "<html><body>This week we launched several new features...</body></html>"
+  },
+  {
+    "sender": "urgent.customer@domain.org",
+    "sender_name": "Urgent Customer",
+    "subject": "Payment failed - account locked",
+    "body": "My payment failed this morning and now my account is locked. I have important work to complete today and cannot access my files. Please unlock my account immediately. My order ID is #54321 and I can provide updated payment information right now.",
+    "date_received": "2024-01-15T07:45:00Z",
+    "raw_html": "<html><body>My payment failed this morning and now my account is locked...</body></html>"
+  },
+  {
+    "sender": "beta.tester@email.net",
+    "sender_name": "Beta Tester",
+    "subject": "Bug report: Dashboard not loading",
+    "body": "Hi, I'm part of your beta testing program. The new dashboard feature is not loading properly on Chrome 120. I get a white screen after login. The issue started after the latest update. My beta tester ID is BT-789. Screenshots attached separately.",
+    "date_received": "2024-01-15T15:30:00Z",
+    "raw_html": "<html><body>Hi, I'm part of your beta testing program...</body></html>"
+  }
+]
