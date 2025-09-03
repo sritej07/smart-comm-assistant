@@ -331,6 +331,10 @@ TASK: Generate a concise, professional reply (<= 180 words). If info missing, as
         )
 
 # API Routes
+@api_router.get("/")
+async def root():
+    return {"message": "Smart Communication Assistant API", "status": "running"}
+
 @api_router.post("/emails/ingest/mock")
 async def ingest_mock_emails():
     # Sample realistic support emails
