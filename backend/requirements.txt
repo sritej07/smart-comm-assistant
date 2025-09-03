@@ -7,4 +7,3 @@ google-generativeai
 sentence-transformers
 faiss-cpu
 numpy
-asyncio-compat
