@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./App.css";
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const API = 'http://127.0.0.1:8000/api';
 
 const App = () => {
   const [emails, setEmails] = useState([]);
