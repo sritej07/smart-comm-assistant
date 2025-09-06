@@ -12,7 +12,7 @@ An AI-powered email management system that automates customer support email proc
 - **Modern UI**: Responsive React interface with real-time updates
 
 ## 🎥 Project Demo
-[Click here to watch the demo video(thumbnail.png)](https://drive.google.com/file/d/1cf27j9ugfFrQq701639cqjID5GS3CYuz/view?usp=sharing)
+[![Click here to watch the demo video](thumbnail.png)](https://drive.google.com/file/d/1cf27j9ugfFrQq701639cqjID5GS3CYuz/view?usp=sharing)
 
 ## 🏗️ Architecture
 
