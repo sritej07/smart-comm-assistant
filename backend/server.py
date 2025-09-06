@@ -27,6 +27,14 @@ class KnowledgeBaseItem(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# Reply Model
+class SentReply(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email_id: str
+    reply_text: str
+    sent_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    sent_by: str = "user"
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -44,27 +52,115 @@ embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 vector_dimension = 384  # all-MiniLM-L6-v2 dimension
 faiss_index = faiss.IndexFlatIP(vector_dimension)  # Inner product for cosine similarity
 
-# Knowledge base documents
-knowledge_base = [
-    {"id": "faq_01", "title": "Refund Policy", "content": "We offer full refunds within 30 days of purchase. To request a refund, contact support with your order ID."},
-    {"id": "faq_02", "title": "Shipping Information", "content": "Standard shipping takes 3-5 business days. Express shipping is available for 1-2 day delivery."},
-    {"id": "faq_03", "title": "Account Issues", "content": "If you're having trouble accessing your account, try resetting your password or contact support."},
-    {"id": "policy_01", "title": "Privacy Policy", "content": "We protect your personal information and only use it to provide our services. We never share data with third parties."},
-    {"id": "policy_02", "title": "Terms of Service", "content": "By using our service, you agree to our terms. Violations may result in account suspension."},
-    {"id": "billing_01", "title": "Billing Support", "content": "For billing questions, contact our billing team with your order ID and payment method details."},
-    {"id": "tech_01", "title": "Technical Support", "content": "For technical issues, please provide your device information, browser version, and steps to reproduce the issue."},
-    {"id": "feature_01", "title": "Feature Requests", "content": "We welcome feature suggestions! Please describe your use case and how it would benefit other users."}
-]
+# Knowledge base documents - will be loaded from database
+knowledge_base = []
 
-# Build FAISS index
-def build_knowledge_base():
-    global faiss_index
-    texts = [doc["content"] for doc in knowledge_base]
-    embeddings = embedding_model.encode(texts)
-    embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)  # Normalize
-    faiss_index.add(embeddings.astype('float32'))
-
-build_knowledge_base()
+# Build FAISS index from database
+async def build_knowledge_base():
+    global faiss_index, knowledge_base
+    try:
+        # Fetch knowledge base items from database
+        kb_items = await db.knowledge_base.find({}).to_list(length=None)
+        
+        if not kb_items:
+            # Initialize with default knowledge base if empty
+            default_kb = [
+                {
+                    "id": "faq_01",
+                    "title": "Refund Policy",
+                    "content": "We offer full refunds within 30 days of purchase. To request a refund, contact support with your order ID.",
+                    "category": "policy",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                {
+                    "id": "faq_02",
+                    "title": "Shipping Information", 
+                    "content": "Standard shipping takes 3-5 business days. Express shipping is available for 1-2 day delivery.",
+                    "category": "shipping",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                {
+                    "id": "faq_03",
+                    "title": "Account Issues",
+                    "content": "If you're having trouble accessing your account, try resetting your password or contact support.",
+                    "category": "account",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                {
+                    "id": "policy_01",
+                    "title": "Privacy Policy",
+                    "content": "We protect your personal information and only use it to provide our services. We never share data with third parties.",
+                    "category": "policy",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                {
+                    "id": "policy_02",
+                    "title": "Terms of Service",
+                    "content": "By using our service, you agree to our terms. Violations may result in account suspension.",
+                    "category": "policy",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                {
+                    "id": "billing_01",
+                    "title": "Billing Support",
+                    "content": "For billing questions, contact our billing team with your order ID and payment method details.",
+                    "category": "billing",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                {
+                    "id": "tech_01",
+                    "title": "Technical Support",
+                    "content": "For technical issues, please provide your device information, browser version, and steps to reproduce the issue.",
+                    "category": "technical",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                },
+                {
+                    "id": "feature_01",
+                    "title": "Feature Requests",
+                    "content": "We welcome feature suggestions! Please describe your use case and how it would benefit other users.",
+                    "category": "feature",
+                    "created_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            ]
+            
+            # Insert default knowledge base
+            await db.knowledge_base.insert_many(default_kb)
+            kb_items = default_kb
+        
+        # Remove _id from MongoDB documents
+        for item in kb_items:
+            if "_id" in item:
+                del item["_id"]
+        
+        knowledge_base = kb_items
+        
+        if knowledge_base:
+            # Build new FAISS index
+            texts = [doc["content"] for doc in knowledge_base]
+            embeddings = embedding_model.encode(texts)
+            embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)  # Normalize
+            
+            # Reset index
+            faiss_index = faiss.IndexFlatIP(vector_dimension)
+            faiss_index.add(embeddings.astype('float32'))
+            
+            logging.info(f"Knowledge base rebuilt with {len(knowledge_base)} items")
+        else:
+            logging.warning("Knowledge base is empty")
+            
+    except Exception as e:
+        logging.error(f"Error building knowledge base: {e}")
+        # Fallback to empty knowledge base
+        knowledge_base = []
+        faiss_index = faiss.IndexFlatIP(vector_dimension)
 
 # Create the main app
 app = FastAPI()
@@ -110,6 +206,7 @@ class Email(BaseModel):
     priority_rationale: List[str] = []
     retrieval_hits: List[RetrievalHit] = []
     draft_reply: Optional[DraftReply] = None
+    sent_reply: Optional[SentReply] = None  # Add sent reply reference
     audit_log: List[AuditLogEntry] = []
     status: str = "pending"  # pending|escalated|resolved
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -118,6 +215,7 @@ class Email(BaseModel):
 class EmailSummary(BaseModel):
     id: str
     sender: str
+    sender_name: str
     subject: str
     sentiment: str
     priority_score: float
@@ -244,6 +342,9 @@ Emails:
 
 # RAG retrieval
 def retrieve_relevant_docs(query: str, top_k: int = 3) -> List[RetrievalHit]:
+    if not knowledge_base or faiss_index.ntotal == 0:
+        return []
+        
     query_embedding = embedding_model.encode([query])
     query_embedding = query_embedding / np.linalg.norm(query_embedding, axis=1, keepdims=True)
     
@@ -251,7 +352,7 @@ def retrieve_relevant_docs(query: str, top_k: int = 3) -> List[RetrievalHit]:
     
     hits = []
     for score, idx in zip(scores[0], indices[0]):
-        if idx < len(knowledge_base):
+        if idx < len(knowledge_base) and idx >= 0:
             doc = knowledge_base[idx]
             hits.append(RetrievalHit(
                 doc_id=doc["id"],
@@ -367,7 +468,6 @@ async def ingest_mock_emails():
             "date_received": datetime.now(timezone.utc)
         }
     ]
-     # same as before
 
     bodies = [e["body"] for e in sample_emails]
 
@@ -422,6 +522,7 @@ async def get_emails(
         summaries.append(EmailSummary(
             id=email["id"],
             sender=email["sender"],
+            sender_name=email.get("sender_name", email["sender"]),
             subject=email["subject"],
             sentiment=email["sentiment"],
             priority_score=email["priority_score"],
@@ -441,6 +542,14 @@ async def get_email_detail(email_id: str):
     # Convert ObjectId to string if present
     if "_id" in email:
         del email["_id"]
+    
+    # If email has sent_reply, fetch the actual reply data
+    if email.get("sent_reply"):
+        reply_data = await db.sent_replies.find_one({"id": email["sent_reply"]["id"]})
+        if reply_data and "_id" in reply_data:
+            del reply_data["_id"]
+        if reply_data:
+            email["sent_reply"] = reply_data
     
     return email
 
@@ -497,32 +606,15 @@ async def get_knowledge_base():
                 del item["_id"]
         return items
     except Exception as e:
-        # Return mock data if collection doesn't exist
-        return [
-            KnowledgeBaseItem(
-                id="faq_01",
-                title="Refund Policy",
-                content="We offer full refunds within 30 days of purchase. To request a refund, contact support with your order ID.",
-                category="policy"
-            ),
-            KnowledgeBaseItem(
-                id="faq_02", 
-                title="Shipping Information",
-                content="Standard shipping takes 3-5 business days. Express shipping is available for 1-2 day delivery.",
-                category="shipping"
-            ),
-            KnowledgeBaseItem(
-                id="tech_01",
-                title="Technical Support", 
-                content="For technical issues, please provide your device information, browser version, and steps to reproduce the issue.",
-                category="technical"
-            )
-        ]
+        logging.error(f"Error fetching knowledge base: {e}")
+        return []
 
 @api_router.post("/knowledge-base")
 async def create_knowledge_base_item(item: KnowledgeBaseItem):
     try:
         await db.knowledge_base.insert_one(item.dict())
+        # Rebuild knowledge base after adding new item
+        await build_knowledge_base()
         return {"status": "created", "id": item.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create knowledge base item: {str(e)}")
@@ -535,6 +627,8 @@ async def update_knowledge_base_item(item_id: str, item: KnowledgeBaseItem):
         result = await db.knowledge_base.replace_one({"id": item_id}, item.dict())
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Knowledge base item not found")
+        # Rebuild knowledge base after updating
+        await build_knowledge_base()
         return {"status": "updated", "id": item_id}
     except HTTPException:
         raise
@@ -547,6 +641,8 @@ async def delete_knowledge_base_item(item_id: str):
         result = await db.knowledge_base.delete_one({"id": item_id})
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Knowledge base item not found")
+        # Rebuild knowledge base after deleting
+        await build_knowledge_base()
         return {"status": "deleted", "id": item_id}
     except HTTPException:
         raise
@@ -559,6 +655,17 @@ async def send_email_reply(email_id: str, request: SendEmailRequest):
     if not email:
         raise HTTPException(status_code=404, detail="Email not found")
     
+    # Create sent reply record
+    sent_reply = SentReply(
+        email_id=email_id,
+        reply_text=request.final_text,
+        sent_at=datetime.now(timezone.utc),
+        sent_by="user"
+    )
+    
+    # Save sent reply to database
+    await db.sent_replies.insert_one(sent_reply.dict())
+    
     # Add audit log for sending
     audit_entry = AuditLogEntry(
         event="sent",
@@ -566,12 +673,13 @@ async def send_email_reply(email_id: str, request: SendEmailRequest):
         text=request.final_text
     )
     
-    # Update email status and add audit log
+    # Update email status, add audit log, and link sent reply
     await db.emails.update_one(
         {"id": email_id},
         {
             "$set": {
                 "status": "resolved",
+                "sent_reply": sent_reply.dict(),
                 "updated_at": datetime.now(timezone.utc)
             },
             "$push": {"audit_log": audit_entry.dict()}
@@ -581,6 +689,7 @@ async def send_email_reply(email_id: str, request: SendEmailRequest):
     return {
         "status": "sent",
         "mode": request.send_mode,
+        "sent_reply_id": sent_reply.id,
         "message": f"Email reply {'sent' if request.send_mode == 'real' else 'mock sent'} successfully"
     }
 
@@ -613,6 +722,19 @@ async def get_analytics():
         avg_priority=round(avg_priority, 3)
     )
 
+# Rebuild knowledge base endpoint
+@api_router.post("/knowledge-base/rebuild")
+async def rebuild_knowledge_base():
+    try:
+        await build_knowledge_base()
+        return {
+            "status": "success", 
+            "message": f"Knowledge base rebuilt with {len(knowledge_base)} items",
+            "total_items": len(knowledge_base)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rebuild knowledge base: {str(e)}")
+
 # Include router
 app.include_router(api_router)
 
@@ -631,8 +753,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@app.on_event("startup")
+async def startup_db():
+    """Initialize knowledge base on startup"""
+    await build_knowledge_base()
+    logger.info("Application started and knowledge base initialized")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
 if __name__ == "__main__":
     uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
