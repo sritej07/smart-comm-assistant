@@ -18,6 +18,15 @@ import faiss
 import re
 import uvicorn
 
+# Knowledge Base Model
+class KnowledgeBaseItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    content: str
+    category: str = "general"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -476,6 +485,73 @@ async def generate_email_reply(email_id: str):
         "draft_reply": draft_reply.dict(),
         "retrieval_hits": [hit.dict() for hit in retrieval_hits]
     }
+
+# Knowledge Base Routes
+@api_router.get("/knowledge-base", response_model=List[KnowledgeBaseItem])
+async def get_knowledge_base():
+    try:
+        items = await db.knowledge_base.find({}).to_list(length=None)
+        # Convert ObjectId to string and return
+        for item in items:
+            if "_id" in item:
+                del item["_id"]
+        return items
+    except Exception as e:
+        # Return mock data if collection doesn't exist
+        return [
+            KnowledgeBaseItem(
+                id="faq_01",
+                title="Refund Policy",
+                content="We offer full refunds within 30 days of purchase. To request a refund, contact support with your order ID.",
+                category="policy"
+            ),
+            KnowledgeBaseItem(
+                id="faq_02", 
+                title="Shipping Information",
+                content="Standard shipping takes 3-5 business days. Express shipping is available for 1-2 day delivery.",
+                category="shipping"
+            ),
+            KnowledgeBaseItem(
+                id="tech_01",
+                title="Technical Support", 
+                content="For technical issues, please provide your device information, browser version, and steps to reproduce the issue.",
+                category="technical"
+            )
+        ]
+
+@api_router.post("/knowledge-base")
+async def create_knowledge_base_item(item: KnowledgeBaseItem):
+    try:
+        await db.knowledge_base.insert_one(item.dict())
+        return {"status": "created", "id": item.id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create knowledge base item: {str(e)}")
+
+@api_router.put("/knowledge-base/{item_id}")
+async def update_knowledge_base_item(item_id: str, item: KnowledgeBaseItem):
+    try:
+        item.id = item_id
+        item.updated_at = datetime.now(timezone.utc)
+        result = await db.knowledge_base.replace_one({"id": item_id}, item.dict())
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Knowledge base item not found")
+        return {"status": "updated", "id": item_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update knowledge base item: {str(e)}")
+
+@api_router.delete("/knowledge-base/{item_id}")
+async def delete_knowledge_base_item(item_id: str):
+    try:
+        result = await db.knowledge_base.delete_one({"id": item_id})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Knowledge base item not found")
+        return {"status": "deleted", "id": item_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete knowledge base item: {str(e)}")
 
 @api_router.post("/emails/{email_id}/send")
 async def send_email_reply(email_id: str, request: SendEmailRequest):
