@@ -84,7 +84,7 @@ const App = () => {
       });
       await fetchEmails();
       await fetchAnalytics();
-      setSelectedEmail({...selectedEmail, status: 'resolved'});
+      setSelectedEmail({ ...selectedEmail, status: 'resolved' });
     } catch (error) {
       console.error('Error sending reply:', error);
     }
@@ -120,14 +120,17 @@ const App = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <button
-                onClick={ingestMockEmails}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
-              >
-                {loading ? 'Loading...' : 'Load Demo Emails'}
-              </button>
+              {emails.length === 0 && (
+                <button
+                  onClick={ingestMockEmails}
+                  disabled={loading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+                >
+                  {loading ? 'Loading...' : 'Load Demo Emails'}
+                </button>
+              )}
             </div>
+
           </div>
         </div>
       </header>
@@ -138,21 +141,19 @@ const App = () => {
           <nav className="-mb-px flex space-x-8">
             <button
               onClick={() => setActiveTab('inbox')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'inbox'
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'inbox'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Inbox
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'analytics'
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'analytics'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                }`}
             >
               Analytics
             </button>
@@ -178,9 +179,8 @@ const App = () => {
                       <div
                         key={email.id}
                         onClick={() => selectEmail(email.id)}
-                        className={`p-4 cursor-pointer hover:bg-gray-50 ${
-                          selectedEmail?.id === email.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
-                        }`}
+                        className={`p-4 cursor-pointer hover:bg-gray-50 ${selectedEmail?.id === email.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
+                          }`}
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
@@ -224,17 +224,15 @@ const App = () => {
                           From: {selectedEmail.sender} ({selectedEmail.sender_name})
                         </p>
                         <div className="flex items-center space-x-4 mt-2">
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                            getPriorityBadge(selectedEmail.priority_score).class
-                          }`}>
+                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${getPriorityBadge(selectedEmail.priority_score).class
+                            }`}>
                             Priority: {selectedEmail.priority_score}
                           </span>
                           <span className={`text-sm ${getSentimentColor(selectedEmail.sentiment)}`}>
                             {selectedEmail.sentiment}
                           </span>
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                            selectedEmail.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${selectedEmail.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            }`}>
                             {selectedEmail.status}
                           </span>
                         </div>
@@ -441,11 +439,10 @@ const App = () => {
                         <span className="text-gray-500">{count}</span>
                       </div>
                       <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            sentiment === 'Positive' ? 'bg-green-500' : 
-                            sentiment === 'Negative' ? 'bg-red-500' : 'bg-gray-500'
-                          }`}
+                        <div
+                          className={`h-2 rounded-full ${sentiment === 'Positive' ? 'bg-green-500' :
+                              sentiment === 'Negative' ? 'bg-red-500' : 'bg-gray-500'
+                            }`}
                           style={{ width: `${(count / analytics.total_emails) * 100}%` }}
                         ></div>
                       </div>

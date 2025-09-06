@@ -166,89 +166,72 @@ def compute_priority_score(email_dict, vip_list=set()):
     return round(score, 3), rationale
 
 # Email extraction using Gemini
-async def extract_email_info(email_body: str) -> ExtractedData:
+async def extract_email_info_bulk(emails: List[str]) -> List[ExtractedData]:
     try:
-        extraction_prompt = f"""SYSTEM: You are an extraction assistant. ONLY output valid JSON.
+        # Build a single prompt with numbered emails
+        numbered_emails = "\n".join([f"{i+1}. {e}" for i, e in enumerate(emails)])
+        extraction_prompt = f"""
+SYSTEM: You are an extraction assistant. ONLY output valid JSON.
 
-USER: Extract from the EMAIL_TEXT the following fields: phone, alt_email, requested_action, order_id, urgency_keywords. Output JSON:
-{{
-  "phone": null,
-  "alt_email": null,
-  "requested_action": "",
-  "order_id": null,
-  "urgency_keywords": []
-}}
-EMAIL_TEXT: \"\"\"{email_body}\"\"\""""
+USER: Extract for each email the following fields: phone, alt_email, requested_action, order_id, urgency_keywords.
+Return a JSON array with one object per email, preserving order.
+Emails:
+{numbered_emails}
+"""
 
         response = await asyncio.to_thread(
             model.generate_content,
             extraction_prompt,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.0,
-                max_output_tokens=512
+                max_output_tokens=2048
             )
         )
-        
+
         result_text = response.text.strip()
         if result_text.startswith('```json'):
             result_text = result_text[7:]
         if result_text.endswith('```'):
             result_text = result_text[:-3]
-        
-        extracted_data = json.loads(result_text)
-        return ExtractedData(**extracted_data)
-    
+
+        data = json.loads(result_text)
+        return [ExtractedData(**item) for item in data]
+
     except Exception as e:
-        logging.error(f"Gemini extraction failed: {e}")
-        # Fallback regex extraction
-        phone_match = re.search(r'(\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})', email_body)
-        email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', email_body)
-        order_match = re.search(r'order\s*#?\s*([A-Za-z0-9]+)', email_body, re.IGNORECASE)
-        
-        urgency_keywords = ["immediately", "urgent", "asap", "critical", "now", "blocked", "down"]
-        found_urgency = [kw for kw in urgency_keywords if kw in email_body.lower()]
-        
-        return ExtractedData(
-            phone=phone_match.group(1) if phone_match else None,
-            alt_email=email_match.group(0) if email_match else None,
-            requested_action="Customer inquiry - needs manual review",
-            order_id=order_match.group(1) if order_match else None,
-            urgency_keywords=found_urgency
-        )
+        logging.error(f"Bulk extraction failed: {e}")
+        return [ExtractedData() for _ in emails]  # fallback empty results
+
 
 # Sentiment analysis using Gemini
-async def analyze_sentiment(email_body: str) -> str:
+async def analyze_sentiment_bulk(emails: List[str]) -> List[str]:
     try:
-        sentiment_prompt = f"""Analyze the sentiment of this email. Respond with only one word: Positive, Neutral, or Negative.
-
-Email: {email_body}"""
+        numbered_emails = "\n".join([f"{i+1}. {e}" for i, e in enumerate(emails)])
+        sentiment_prompt = f"""
+Analyze the sentiment for each of these emails. Respond with a JSON list containing only one of these values for each email: "Positive", "Neutral", or "Negative".
+Emails:
+{numbered_emails}
+"""
 
         response = await asyncio.to_thread(
             model.generate_content,
             sentiment_prompt,
             generation_config=genai.types.GenerationConfig(
                 temperature=0.0,
-                max_output_tokens=10
+                max_output_tokens=512
             )
         )
-        
-        sentiment = response.text.strip()
-        if sentiment in ["Positive", "Neutral", "Negative"]:
-            return sentiment
-        return "Neutral"
-    
+
+        result_text = response.text.strip()
+        if result_text.startswith('```json'):
+            result_text = result_text[7:]
+        if result_text.endswith('```'):
+            result_text = result_text[:-3]
+
+        return json.loads(result_text)
+
     except Exception as e:
-        logging.error(f"Sentiment analysis failed: {e}")
-        # Simple fallback
-        negative_words = ["angry", "frustrated", "terrible", "awful", "hate", "disappointed", "complaint"]
-        positive_words = ["great", "excellent", "love", "amazing", "wonderful", "perfect", "thank"]
-        
-        email_lower = email_body.lower()
-        if any(word in email_lower for word in negative_words):
-            return "Negative"
-        elif any(word in email_lower for word in positive_words):
-            return "Positive"
-        return "Neutral"
+        logging.error(f"Bulk sentiment analysis failed: {e}")
+        return ["Neutral"] * len(emails)  # fallback neutral
 
 # RAG retrieval
 def retrieve_relevant_docs(query: str, top_k: int = 3) -> List[RetrievalHit]:
@@ -338,7 +321,6 @@ async def root():
 
 @api_router.post("/emails/ingest/mock")
 async def ingest_mock_emails():
-    # Sample realistic support emails
     sample_emails = [
         {
             "sender": "john.customer@email.com",
@@ -376,19 +358,20 @@ async def ingest_mock_emails():
             "date_received": datetime.now(timezone.utc)
         }
     ]
-    
+     # same as before
+
+    bodies = [e["body"] for e in sample_emails]
+
+    # Bulk extraction & sentiment
+    extracted_list = await extract_email_info_bulk(bodies)
+    sentiments = await analyze_sentiment_bulk(bodies)
+
     ingested_count = 0
-    
-    for email_data in sample_emails:
-        # Extract information
-        extracted = await extract_email_info(email_data["body"])
-        sentiment = await analyze_sentiment(email_data["body"])
-        
-        # Compute priority
+
+    for email_data, extracted, sentiment in zip(sample_emails, extracted_list, sentiments):
         email_with_sentiment = {**email_data, "sentiment": sentiment}
         priority_score, rationale = compute_priority_score(email_with_sentiment)
-        
-        # Create email object
+
         email = Email(
             sender=email_data["sender"],
             sender_name=email_data["sender_name"],
@@ -400,12 +383,12 @@ async def ingest_mock_emails():
             priority_score=priority_score,
             priority_rationale=rationale
         )
-        
-        # Save to database
+
         await db.emails.insert_one(email.dict())
         ingested_count += 1
-    
+
     return {"ingested": ingested_count}
+
 
 @api_router.get("/emails", response_model=List[EmailSummary])
 async def get_emails(
